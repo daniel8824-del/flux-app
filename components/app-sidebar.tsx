@@ -102,14 +102,21 @@ export function AppSidebar({
               variant="outline"
               size="sm"
               className="bg-background justify-start h-8"
-              asChild
+              onClick={() => {
+                // 커스텀 이벤트를 발생시켜 이미지 생성 상태만 초기화
+                const resetEvent = new CustomEvent('reset-image-generator');
+                window.dispatchEvent(resetEvent);
+                
+                // 현재 페이지가 /flux가 아닌 경우에만 페이지 이동
+                if (pathname !== '/flux') {
+                  router.push('/flux');
+                }
+              }}
             >
-              <Link href="/flux">
-                <Home className="mr-1 h-3.5 w-3.5" />
-                <span className={cn('text-xs', { hidden: !isSidebarOpen })}>
-                  홈 화면
-                </span>
-              </Link>
+              <Home className="mr-1 h-3.5 w-3.5" />
+              <span className={cn('text-xs', { hidden: !isSidebarOpen })}>
+                홈 화면
+              </span>
             </Button>
             
             {/* 로그인/로그아웃 버튼 */}

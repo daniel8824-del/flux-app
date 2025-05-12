@@ -48,15 +48,15 @@ export default function GalleryPage() {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto py-8 px-4 min-h-[calc(100vh-100px)]">
-      <div className="mb-8">
+    <div className="container max-w-6xl mx-auto py-8 px-4">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold">이미지 갤러리</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-2">
           생성한 이미지를 관리하고 다운로드하세요
         </p>
       </div>
 
-      <div className="h-full pb-12">
+      <div className="w-full">
         <ImageGallery userId={userId || undefined} />
       </div>
     </div>

@@ -16,6 +16,7 @@ export default function FluxPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [userId, setUserId] = useState<string | undefined>()
   const [activeTab, setActiveTab] = useState<'voice' | 'text'>('voice')
+  const [resetKey, setResetKey] = useState(Date.now())
 
   useEffect(() => {
     // 사용자 세션 확인
@@ -27,6 +28,23 @@ export default function FluxPage() {
     }
     
     getSession()
+    
+    // 페이지 로드 시 resetKey 업데이트로 컴포넌트 초기화
+    setResetKey(Date.now())
+    
+    // 이미지 생성기 초기화 이벤트 리스너 추가
+    const handleResetImageGenerator = () => {
+      console.log('이미지 생성기 초기화 이벤트 수신');
+      setResetKey(Date.now());
+      setTranscribedText('');
+    };
+    
+    window.addEventListener('reset-image-generator', handleResetImageGenerator);
+    
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('reset-image-generator', handleResetImageGenerator);
+    };
   }, [])
 
   const handleTranscriptionComplete = (text: string) => {
@@ -94,6 +112,7 @@ export default function FluxPage() {
                       <ImageGenerator 
                         initialPrompt={transcribedText} 
                         userId={userId}
+                        key={resetKey}
                       />
                     </CardContent>
                   </Card>
@@ -112,6 +131,7 @@ export default function FluxPage() {
                   <CardContent className="pt-4">
                     <ImageGenerator 
                       userId={userId}
+                      key={resetKey}
                     />
                   </CardContent>
                 </Card>

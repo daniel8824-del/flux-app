@@ -284,12 +284,21 @@ export async function saveGeneratedImage(userId: string, imageUrl: string, promp
   return { data, error };
 }
 
-export async function getUserImages(userId: string) {
+export async function getUserImages(userId: string, page = 1) {
+  const limit = 4; // 페이지당 4개 이미지로 변경
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  
+  console.log(`이미지 로드: 페이지 ${page}, 범위 ${from}-${to}`);
+  
   const { data, error } = await supabase
     .from('generated_images')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  
+  console.log(`이미지 로드 결과: ${data?.length}개`);
   
   return { data, error };
 }
@@ -301,4 +310,18 @@ export async function deleteUserImage(imageId: string) {
     .eq('id', imageId);
   
   return { data, error };
+}
+
+// 전체 이미지 개수 조회 함수 추가
+export async function getTotalImageCount(userId: string) {
+  console.log(`총 이미지 개수 조회: ${userId}`);
+  
+  const { count, error } = await supabase
+    .from('generated_images')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  
+  console.log(`총 이미지 개수: ${count}`);
+  
+  return { count, error };
 } 

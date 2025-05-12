@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { getUserImages, deleteUserImage } from '@/lib/supabase'
+import { getUserImages, deleteUserImage, getTotalImageCount } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { Trash2, Download, ExternalLink, Loader2, Copy, Check, X } from 'lucide-react'
+import { Trash2, Download, ExternalLink, Loader2, Copy, Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -26,10 +26,13 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [isCopying, setIsCopying] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const imagesPerPage = 4
   const { toast } = useToast()
 
   // 이미지 로드 함수 정의
-  const loadImages = async () => {
+  const loadImages = async (page = 1) => {
     if (!userId) {
       setLoading(false)
       return
@@ -37,12 +40,27 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
 
     try {
       setLoading(true)
-      const { data, error } = await getUserImages(userId)
+      setError('')
+      
+      // 전체 이미지 수 가져오기
+      const { count, error: countError } = await getTotalImageCount(userId)
+      
+      if (countError) {
+        console.error('이미지 개수 조회 오류:', countError)
+      } else if (count !== null) {
+        const pages = Math.max(1, Math.ceil(count / imagesPerPage))
+        console.log(`총 페이지 수 계산: ${count}개 이미지 / ${imagesPerPage} = ${pages} 페이지`)
+        setTotalPages(pages)
+      }
+      
+      // 현재 페이지의 이미지 가져오기
+      const { data, error } = await getUserImages(userId, page)
       
       if (error) {
         throw new Error(error.message)
       }
       
+      console.log(`페이지 ${page} 이미지 로드 완료:`, data?.length)
       setImages(data || [])
     } catch (err) {
       setError('이미지를 불러오는 중 오류가 발생했습니다.')
@@ -52,9 +70,17 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
     }
   }
 
+  // 페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    console.log(`페이지 변경: ${currentPage} -> ${page}`)
+    setCurrentPage(page)
+    loadImages(page)
+  }
+
   // 초기 로드
   useEffect(() => {
-    loadImages()
+    loadImages(1)
+    setCurrentPage(1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
   
@@ -64,8 +90,9 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
     const handleGalleryUpdate = (event: CustomEvent<{userId?: string}>) => {
       // 이벤트의 userId가 현재 컴포넌트의 userId와 일치하는지 확인
       if (event.detail?.userId === userId) {
-        // 갤러리 이미지를 다시 로드
-        loadImages();
+        // 갤러리 이미지를 다시 로드 (첫 페이지)
+        loadImages(1);
+        setCurrentPage(1);
       }
     };
 
@@ -88,11 +115,21 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
         throw new Error(error.message)
       }
       
+      // 현재 표시된 이미지 목록에서 삭제
       setImages(prev => prev.filter(img => img.id !== id))
       
       // 삭제한 이미지가 현재 선택된 이미지라면 선택 해제
       if (selectedImage?.id === id) {
         setSelectedImage(null)
+      }
+
+      // 이미지를 모두 삭제했고 1페이지가 아니면 이전 페이지로 이동
+      if (images.length <= 1 && currentPage > 1) {
+        handlePageChange(currentPage - 1)
+      } 
+      // 첫 페이지이거나 이미지가 남아있으면 현재 페이지 새로고침
+      else {
+        loadImages(currentPage)
       }
     } catch (err) {
       setError('이미지를 삭제하는 중 오류가 발생했습니다.')
@@ -226,33 +263,100 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
   }
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-6">
       {error && (
         <div className="p-3 bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400 rounded-md text-sm">
           {error}
         </div>
       )}
       
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         {images.map((image) => (
           <div 
             key={image.id} 
             className="relative overflow-hidden rounded-xl cursor-pointer bg-zinc-100 dark:bg-zinc-800 shadow-sm"
             onClick={() => setSelectedImage(image)}
-            style={{ width: '100%', height: '0', paddingBottom: '100%' }}
+            style={{ width: '100%', aspectRatio: '1/1' }}
           >
-            <div className="absolute inset-0">
-              <Image
-                src={image.image_url}
-                alt={image.prompt}
-                fill
-                className="object-cover"
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              />
-            </div>
+            <Image
+              src={image.image_url}
+              alt={image.prompt}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 25vw, 20vw"
+            />
           </div>
         ))}
       </div>
+      
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-3 pt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1 || loading}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            {(() => {
+              // 표시할 페이지 번호 배열 생성
+              const pageNumbers = [];
+              const maxVisiblePages = 5;
+              
+              if (totalPages <= maxVisiblePages) {
+                // 전체 페이지가 5개 이하면 모든 페이지 표시
+                for (let i = 1; i <= totalPages; i++) {
+                  pageNumbers.push(i);
+                }
+              } else {
+                // 5개 초과일 경우 현재 페이지 주변 페이지 표시
+                let startPage = Math.max(1, currentPage - 2);
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                
+                // 끝쪽 페이지일 경우 시작 페이지 조정
+                if (endPage === totalPages) {
+                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+                
+                for (let i = startPage; i <= endPage; i++) {
+                  pageNumbers.push(i);
+                }
+              }
+              
+              return pageNumbers.map(pageNum => (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(pageNum)}
+                  disabled={loading}
+                  className="min-w-[32px]"
+                >
+                  {pageNum}
+                </Button>
+              ));
+            })()}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages || loading}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      
+      {loading && (
+        <div className="flex justify-center pt-6">
+          <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+        </div>
+      )}
       
       {selectedImage && (
         <div className="mt-8 p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-800">
@@ -267,13 +371,13 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="relative aspect-square w-full md:w-1/2 max-w-lg mx-auto overflow-hidden rounded-lg shadow-md">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden">
+            <div className="relative rounded-lg shadow-md" style={{ aspectRatio: '1/1' }}>
               <Image
                 src={selectedImage.image_url}
                 alt={selectedImage.prompt}
                 fill
-                className="object-cover"
+                className="object-cover rounded-lg"
                 sizes="(max-width: 768px) 100vw, 500px"
                 priority
               />
@@ -292,7 +396,7 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
               </div>
             </div>
             
-            <div className="flex-1 space-y-5">
+            <div className="space-y-4">
               <div>
                 <p className="text-xs text-zinc-500">
                   생성일: {formatCreatedAt(selectedImage.created_at)}
@@ -321,14 +425,14 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
                     )}
                   </Button>
                 </div>
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-md text-xs whitespace-pre-wrap max-h-[150px] overflow-y-auto">
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-md text-xs whitespace-pre-wrap max-h-[120px] overflow-y-auto">
                   {selectedImage.prompt.includes('English Prompt:') 
                     ? selectedImage.prompt.split('English Prompt:')[1].trim()
                     : selectedImage.prompt}
                 </div>
               </div>
               
-              <div className="flex flex-wrap gap-2 pt-4">
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button
                   size="sm"
                   variant="outline"

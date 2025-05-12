@@ -22,6 +22,8 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
   const [cooldown, setCooldown] = useState(0)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
+  const [signinError, setSigninError] = useState<string | null>(null)
+  const [signupError, setSignupError] = useState<string | null>(null)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -45,6 +47,15 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
     
     checkUser();
   }, []);
+  
+  // 탭 변경 시 오류 메시지 초기화
+  const handleTabChange = (value: string) => {
+    if (value === 'signin') {
+      setSignupError(null);
+    } else {
+      setSigninError(null);
+    }
+  };
   
   // 인증 완료 메시지 리스너 추가
   useEffect(() => {
@@ -84,6 +95,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setSigninError(null)
 
     try {
       console.log('로그인 요청 시작:', { email });
@@ -128,6 +140,9 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
         }
       }
       
+      // 오류 메시지를 상태에 저장하여 UI에 표시
+      setSigninError(errorMessage);
+      
       toast({
         title: '로그인 실패',
         description: errorMessage,
@@ -152,6 +167,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
     }
     
     setLoading(true)
+    setSignupError(null)
     console.log('회원가입 시도 중:', { email });
 
     try {
@@ -219,6 +235,9 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
         console.log('오류 인스턴스:', { name: error.name, message: error.message });
       }
       
+      // 오류 메시지를 상태에 저장하여 UI에 표시
+      setSignupError(errorMessage);
+      
       toast({
         title: '회원가입 실패',
         description: errorMessage,
@@ -272,6 +291,23 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
     );
   };
 
+  // 오류 메시지 UI 컴포넌트
+  const renderErrorMessage = (message: string | null) => {
+    if (!message) return null;
+    
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md flex items-start gap-3 mb-4">
+        <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <h4 className="font-medium text-red-800 dark:text-red-300">인증 오류</h4>
+          <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+            {message}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -280,7 +316,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
           로그인하거나 회원가입하여 이미지를 저장해보세요.
         </CardDescription>
       </CardHeader>
-      <Tabs defaultValue={initialTab}>
+      <Tabs defaultValue={initialTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="signin">로그인</TabsTrigger>
           <TabsTrigger value="signup">회원가입</TabsTrigger>
@@ -288,6 +324,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
         
         <TabsContent value="signin">
           {renderSuccessMessage()}
+          {renderErrorMessage(signinError)}
           <form onSubmit={handleSignIn}>
             <CardContent className="space-y-4 pt-4">
               <div className="space-y-2">
@@ -299,6 +336,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@email.com"
                   required
+                  className={signinError ? "border-red-300 focus:ring-red-400" : ""}
                 />
               </div>
               <div className="space-y-2">
@@ -310,12 +348,20 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="********"
                   required
+                  className={signinError ? "border-red-300 focus:ring-red-400" : ""}
                 />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? '로그인 중...' : '로그인'}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    로그인 중...
+                  </>
+                ) : (
+                  '로그인'
+                )}
               </Button>
               <p className="text-center text-sm text-gray-600 dark:text-zinc-400">
                 계정이 없으신가요? <Link href="/register" className="font-semibold text-gray-800 hover:underline dark:text-zinc-200">회원가입</Link>하세요.
@@ -326,6 +372,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
         
         <TabsContent value="signup">
           {renderSuccessMessage()}
+          {renderErrorMessage(signupError)}
           <form onSubmit={handleSignUp}>
             <CardContent className="space-y-4 pt-4">
               <div className="space-y-2">
@@ -337,6 +384,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@email.com"
                   required
+                  className={signupError ? "border-red-300 focus:ring-red-400" : ""}
                 />
               </div>
               <div className="space-y-2">
@@ -348,6 +396,7 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="최소 6자 이상"
                   required
+                  className={signupError ? "border-red-300 focus:ring-red-400" : ""}
                 />
               </div>
             </CardContent>
@@ -357,7 +406,19 @@ export function AuthForm({ initialTab = 'signin' }: AuthFormProps) {
                 className="w-full" 
                 disabled={loading || cooldown > 0}
               >
-                {loading ? '가입 중...' : cooldown > 0 ? `대기 중... (${cooldown}초)` : '회원가입'}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    가입 중...
+                  </>
+                ) : cooldown > 0 ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    대기 중... ({cooldown}초)
+                  </>
+                ) : (
+                  '회원가입'
+                )}
               </Button>
               <p className="text-center text-sm text-gray-600 dark:text-zinc-400">
                 이미 계정이 있으신가요? <Link href="/login" className="font-semibold text-gray-800 hover:underline dark:text-zinc-200">로그인</Link>하세요.
