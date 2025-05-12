@@ -301,18 +301,117 @@ npm run dev
 
 Vercel 플랫폼을 통해 손쉽게 Flux 앱을 배포할 수 있습니다:
 
-1. GitHub 계정과 Vercel 계정 연결:
+1. **GitHub 계정과 Vercel 계정 연결**:
    - Vercel 대시보드에서 GitHub 계정을 연결합니다
    - 해당 저장소를 선택하여 직접 배포할 수 있습니다
 
-2. 배포 시 발생할 수 있는 문제 해결:
+2. **배포 시 발생할 수 있는 문제 해결**:
    - ESLint 오류 발생 시: `next.config.ts` 파일에서 `eslint: { ignoreDuringBuilds: true }` 설정 추가
    - 패키지 매니저 충돌 시: Install Command를 `npm install --legacy-peer-deps` 또는 `pnpm install --no-frozen-lockfile`로 변경
    - 데이터베이스 마이그레이션 오류 시: Build Command를 `next build`로 변경하여 마이그레이션 스크립트 실행 건너뛰기
 
-3. 환경 변수 설정:
+3. **환경 변수 설정**:
    - Vercel 대시보드에서 프로젝트 선택
    - Settings > Environment Variables 메뉴에서 모든 환경 변수 추가
    - API 키와 Supabase 연결 정보 등 필요한 모든 변수 설정
 
+4. **Supabase 인증 URL 설정**:
+   - 배포된 웹사이트 URL을 Supabase에 등록하여 인증 기능이 정상 작동하도록 설정
+   - 인증 이메일의 리디렉션 문제를 해결하기 위한 필수 단계입니다
+   - 설정 방법:
+     1. Supabase 대시보드에 로그인하여 프로젝트 선택
+     2. 왼쪽 메뉴에서 "Authentication" 클릭 후 "URL Configuration" 탭 이동
+     3. "Site URL"에 배포된 웹사이트 URL 입력 (예: `https://flux-app-three.vercel.app`)
+     4. "Redirect URLs"에 웹사이트 URL + "/auth-callback" 추가 (예: `https://flux-app-three.vercel.app/auth-callback`)
+     5. 변경사항 저장
+
 배포된 앱은 Vercel에서 제공하는 도메인을 통해 접근할 수 있습니다.
+
+### 9. 오류 해결 가이드
+
+프로젝트 실행 중 발생할 수 있는 주요 오류와 해결 방법입니다:
+
+#### 9.1 의존성 관련 오류
+
+- **문제**: `npm install` 실행 시 의존성 충돌 오류 발생
+- **해결**: `--legacy-peer-deps` 옵션 사용
+  ```bash
+  npm install --legacy-peer-deps
+  ```
+
+- **문제**: 특정 패키지 설치 오류
+- **해결**: 개별 패키지 설치 시도
+  ```bash
+  npm install --legacy-peer-deps 패키지명
+  ```
+
+#### 9.2 API 연결 오류
+
+- **문제**: OpenAI API 또는 Fal.ai API 연결 실패
+- **해결**:
+  1. `.env.local` 파일의 API 키가 올바른지 확인
+  2. API 서비스 상태 및 사용량 한도 확인
+  3. API 요청 형식이 최신 문서와 일치하는지 확인
+
+#### 9.3 인증 관련 오류
+
+- **문제**: "이미 등록된 이메일로 회원가입 시도" 오류
+- **해결**: 로그인 페이지로 이동하여 해당 이메일로 로그인 시도
+
+- **문제**: 회원가입 이메일 인증 링크 클릭 시 로컬호스트로 리디렉션 발생
+- **해결**: Supabase 대시보드에서 Site URL 설정
+  1. Authentication > URL Configuration에서 실제 배포 URL 등록
+  2. Redirect URLs에 배포 URL + "/auth-callback" 추가
+  3. 설정 후 다시 회원가입 테스트
+
+- **문제**: 로그인 후 세션 유지 안됨
+- **해결**: localStorage를 통한 세션 확인 로직 추가 (이미 구현됨)
+
+#### 9.4 이미지 생성/저장 오류
+
+- **문제**: 이미지 생성 시 오류 발생
+- **해결**:
+  1. 콘솔에서 오류 메시지 확인
+  2. Fal.ai API 키 및 사용량 확인
+  3. 프롬프트에 금지된 내용이 포함되어 있는지 확인
+
+- **문제**: 이미지 저장 실패
+- **해결**:
+  1. Supabase 연결 확인
+  2. 데이터베이스 테이블이 올바르게 생성되었는지 확인
+  3. RLS(Row Level Security) 정책이 올바르게 설정되었는지 확인
+
+#### 9.5 갤러리 기능 오류
+
+- **문제**: 갤러리에 이미지가 표시되지 않음
+- **해결**:
+  1. 로그인 상태 확인
+  2. 콘솔에서 데이터베이스 쿼리 오류 확인
+  3. 네트워크 요청 탭에서 API 응답 확인
+
+- **문제**: 갤러리에서 프롬프트 복사 시 한국어와 영어가 모두 복사됨
+- **해결**: `handleCopyPrompt` 함수에서 영어 프롬프트만 복사하도록 수정되었음
+
+#### 9.6 배포 관련 오류
+
+- **문제**: Vercel 배포 시 ESLint 오류
+- **해결**: `next.config.ts` 파일에 다음 설정 추가
+  ```typescript
+  module.exports = {
+    eslint: {
+      // ESLint 오류를 무시하고 빌드 진행
+      ignoreDuringBuilds: true,
+    },
+  }
+  ```
+
+- **문제**: 타입스크립트 오류로 빌드 실패
+- **해결**: `next.config.ts` 파일에 다음 설정 추가
+  ```typescript
+  module.exports = {
+    typescript: {
+      // 타입 오류가 있어도 빌드 진행
+      ignoreBuildErrors: true,
+    },
+  }
+  ```
