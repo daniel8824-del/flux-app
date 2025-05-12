@@ -1,55 +1,16 @@
-import { cookies } from 'next/headers';
+'use client'
 
-import { Chat } from '@/components/chat';
-import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
-import { generateUUID } from '@/lib/utils';
-import { DataStreamHandler } from '@/components/data-stream-handler';
-import { auth } from '../(auth)/auth';
-import { redirect } from 'next/navigation';
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default async function Page() {
-  const session = await auth();
+export default function HomePage() {
+  const router = useRouter()
 
-  if (!session) {
-    redirect('/api/auth/guest');
-  }
+  useEffect(() => {
+    // 홈페이지에 접근하면 초기화면(flux 페이지)으로 리디렉션
+    router.replace('/flux')
+  }, [router])
 
-  const id = generateUUID();
-
-  const cookieStore = await cookies();
-  const modelIdFromCookie = cookieStore.get('chat-model');
-
-  if (!modelIdFromCookie) {
-    return (
-      <>
-        <Chat
-          key={id}
-          id={id}
-          initialMessages={[]}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType="private"
-          isReadonly={false}
-          session={session}
-          autoResume={false}
-        />
-        <DataStreamHandler id={id} />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Chat
-        key={id}
-        id={id}
-        initialMessages={[]}
-        initialChatModel={modelIdFromCookie.value}
-        initialVisibilityType="private"
-        isReadonly={false}
-        session={session}
-        autoResume={false}
-      />
-      <DataStreamHandler id={id} />
-    </>
-  );
+  // 리디렉션 중 보여줄 내용 (보통 깜빡임이 없어 필요하지 않음)
+  return null
 }

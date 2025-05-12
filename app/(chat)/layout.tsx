@@ -22,8 +22,14 @@ export default async function Layout({
         strategy="beforeInteractive"
       />
       <SidebarProvider defaultOpen={!isCollapsed}>
-        <AppSidebar user={session?.user} />
-        <SidebarInset>{children}</SidebarInset>
+        <div className="flex min-h-screen w-full">
+          <div className="flex-none">
+            <AppSidebar user={session?.user} />
+          </div>
+          <main className="flex-1 w-full">
+            {children}
+          </main>
+        </div>
       </SidebarProvider>
     </>
   );
