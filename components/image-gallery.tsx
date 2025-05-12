@@ -162,7 +162,14 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
   const handleCopyPrompt = async (prompt: string) => {
     try {
       setIsCopying(true);
-      await navigator.clipboard.writeText(prompt);
+      
+      // 프롬프트에서 'English Prompt:' 이후 부분만 복사
+      let promptToCopy = prompt;
+      if (prompt.includes('English Prompt:')) {
+        promptToCopy = prompt.split('English Prompt:')[1].trim();
+      }
+      
+      await navigator.clipboard.writeText(promptToCopy);
       
       toast({
         title: "프롬프트 복사 완료",
@@ -177,9 +184,8 @@ export function ImageGallery({ userId }: ImageGalleryProps) {
         variant: "destructive"
       });
     } finally {
-      setIsCopying(false);
-      // 1초 후에 복사 상태 초기화
-      setTimeout(() => setIsCopying(false), 1000);
+      // 복사 상태를 3초 동안 유지
+      setTimeout(() => setIsCopying(false), 3000);
     }
   };
 
